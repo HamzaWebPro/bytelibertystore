@@ -1,28 +1,185 @@
-<h1>{{ article.title }}</h1>
-{% if section.settings.enable_author %}
+<article
+  class="max-w-3xl mx-auto p-6 bg-white shadow-lg rounded-lg"
+  itemscope
+  itemtype="http://schema.org/BlogPosting">
+  {% for block in section.blocks %}
+    {% case block.type %}
+      {% when "blog_title" %}
+        <div class="text-center">
 
-  <small>{{ article.author }}</small>
-{% else %}
-  <small>Anonymous Author</small>
-{% endif %}
-{% if section.settings.enable_publish_date %}
+          <a href="{{blog.url}}" class="text-xl !text-center uppercase font-semibold text-blue-600 hover:text-blue-800 transition duration-300">{{ blog.title }}</a>
+        </div>
 
-  <time datetime="{{article.published_at |  date: "%Y-%m-%d"}}">{{ article.published_at | date: "%Y-%m-%d" }}</time>
-{% else %}
-  <small>Unknown Time & Date</small>
+      {% when "article_title" %}
+        <h1 class="text-2xl font-bold text-center text-gray-900 mt-4" itemprop="headline">{{ article.title }}</h1>
+
+      {% when "article_author" %}
+        <div itemscope itemtype="http://schema.org/Person">
+          Posted By
+          {% if section.settings.enable_author %}
+            <small itemprop="author" class="block text-gray-600 text-sm mt-2">{{ article.author }}</small>
+          {% else %}
+            <small itemprop="author" class="block text-gray-600 text-sm mt-2">Anonymous Author</small>
+          {% endif %}
+        </div>
+
+      {% when "article_published_date" %}
+        {% if section.settings.enable_publish_date %}
+          <time
+            itemprop="datePublished dateCreated"
+            datetime="{{article.published_at | date: "%Y-%m-%d"}}"
+            class="block text-gray-500 text-sm mt-1">{{ article.published_at | date: format: "date_at_time" }}</time>
+        {% else %}
+          <small class="block text-gray-500 text-sm mt-1">Unknown Time & Date</small>
+        {% endif %}
+
+      {% when "featured_image" %}
+        <div itemprop="image">
+          {% if article.image != blank %}
+            <img
+              src="{{article.image |  img_url: "large" }}"
+              class="w-full h-auto rounded-lg mt-4 shadow-md"
+              width="100"
+              itemprop="image"
+              height="100"
+              loading="lazy"
+              alt="{{article.image.alt}}">
+          {% else %}
+            {% assign placeholder_image = "lifestyle-1" %}
+            {{ placeholder_image | placeholder_svg_tag: "w-full h-auto rounded-lg mt-4 shadow-md" }}
+          {% endif %}
+        </div>
+
+
+      {% when "article_content" %}
+        <div itemprop="articleBody" class="mt-4 text-gray-800 leading-relaxed">{{ article.content }}</div>
+
+        {% else %}
+    {% endcase %}
+  {% endfor %}
+</article>
+
+{% if blog.comments_enabled? %}
+  <div id="comments" class="my-8">
+    {% if article.comments_count > 0 %}
+      <div>
+        <h1>What people are saying</h1>
+
+        {% paginate article.comments by 5 %}
+          {% for comment in article.comments %}
+            <div>
+              <span>{{ comment.author }}</span><br><span>{{ comment.created_at | date: format: "default" }}</span>
+              <p>
+                {{ comment.content }}
+              </p>
+            </div>
+          {% endfor %}
+          <div class="mx-auto mt-5 pb-5">
+             {% render 'pagination'
+          , pagination: paginate %}
+          </div>
+        {% endpaginate %}
+      </div>
+    {% else %}
+      There are no comments
+    {% endif %}
+  </div>
+  <div id="comment_form" class="mb-8">
+    {% form 'new_comment'
+      , article %}
+      <div class="flex-1 mx-auto items-center justify-center max-w-4xl px-4">
+        {% if form.errors %}
+          Oh No your comment not posted
+          <ul class="text-red-500">
+            {% for error in form.errors %}
+              <li>
+                {{ form.errors.messages[error] }}
+              </li>
+            {% endfor %}
+          </ul>
+        {% elsif form.posted_successfully? %}
+          Comment Succesfully Posted
+
+
+        {% endif %}
+        <div class="px-1 md:flex mb-3">
+          <div class="px-3 md:w-1/2">
+            <label class="text-gray-500 font-medium uppercase text-xs mb-2" for="comment_author">Name</label>
+            <input
+              class="w-full text-gray-700 border py-3 px-4 mb-3 focus:outline-none"
+              type="text"
+              placeholder="Joe Doe"
+              name="comment[author]"
+              required
+              id="comment_author">
+          </div>
+          <div class="px-3 md:w-1/2">
+            <label class="text-gray-500 font-medium uppercase text-xs mb-2" for="comment_email">Email</label>
+            <input
+              class="w-full text-gray-700 border py-3 px-4 mb-3 focus:outline-none"
+              type="email"
+              placeholder="example@gmail.com"
+              name="comment[email]"
+              required
+              id="comment_email"></div>
+        </div>
+
+        <div class="md:full px-3">
+          <label class="text-gray-500 font-medium uppercase text-xs mb-2" for="comment_content">Comment</label>
+          <textarea
+            name="comment[body]"
+            id="comment_content"
+            required
+            class="w-full text-gray-700 resize-none h-20 py-2 px-3 focus:outline-none border"></textarea>
+        </div>
+        <div class="px-1 md:flex mb-3">
+          <div class="md:w-full px-3">
+            <input
+              type="submit"
+              value="Post Comment"
+              class="w-full rounded-lg cursor-pointer px-3 bg-black text-white py-4">
+          </div>
+        </div>
+
+      </div>
+    {% endform %}
+  </div>
+
 {% endif %}
-<img
-  src="{{article.image |  img_url: "large" }}"
-  width="100"
-  height="100"
-  loading="lazy"
-  alt="{{article.image.alt}}">
-<div class="">{{ article.content }}</div>
+
+
+<script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "BlogPosting",
+    "headline": {{ article.title |  json }},
+    "articleBody": {{ article.content | strip_html | json }},
+    {% if article.excerpt != blank %}
+      "description": {{ article.excerpt |  strip_html |  json }}
+      {% endif %}
+      {% if article.image %}
+        "image" : [{{ article.image|img_url:"medium"| prepend: 'https:' |json }}],
+
+        {% endif %}
+        "datePublished": {{ article.published_at | date: format: "default" | json }},
+        "dateCreated": {{ article.created_at | date: format: "default" | json }},
+        "author": {
+          "@type": "person",
+          "name": {{ article.author|json }}
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": {{ shop.name | json }}
+        }
+      }
+
+</script>
 
 {% schema %}
   {
     "name": "template article",
     "tag": "section",
+    "class": "mern",
     "settings": [
       {
         "type": "checkbox",
@@ -43,6 +200,11 @@
         "limit": 1
       },
       {
+        "type": "blog_title",
+        "name": "Blog Title",
+        "limit": 1
+      },
+      {
         "type": "article_author",
         "name": "Author",
         "limit": 1
@@ -51,10 +213,9 @@
         "type": "article_published_date",
         "name": "Published Date",
         "limit": 1
-      },
-      {
+      }, {
         "type": "featured_image",
-        "name": "Featured Image",
+        "name": "Thumbnail",
         "limit": 1
       }, {
         "type": "article_content",

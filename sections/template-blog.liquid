@@ -1,0 +1,91 @@
+<section class="max-w-7xl mx-auto px-4 py-10">
+  {% paginate blog.articles by section.settings.number_of_blog_posts %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
+      {% for article in blog.articles %}
+        <article
+          class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition duration-300 border border-gray-100"
+          itemscope
+          itemtype="https://schema.org/BlogPosting">
+
+          <!-- Image Section -->
+          <div itemprop="image" class="h-48 overflow-hidden">
+            {% if article.image %}
+              <img
+                src="{{ article.image | img_url: 'medium' }}"
+                alt="{{ article.image.alt | escape }}"
+                class="w-full h-full object-cover"
+                width="400"
+                height="300"
+                loading="lazy">
+            {% else %}
+              {{ "image" | placeholder_svg_tag: "w-full h-full object-cover bg-gray-200" }}
+            {% endif %}
+          </div>
+
+          <!-- Content Section -->
+          <div class="p-5">
+            <h2 class="text-lg font-bold text-gray-900 hover:text-blue-600 transition" itemprop="headline">
+              <a href="{{ article.url }}" itemprop="url">{{ article.title }}</a>
+            </h2>
+
+            {% if article.excerpt.size > 0 %}
+            {% else %}
+
+              <p class="mt-2 text-gray-600 text-sm line-clamp-3" itemprop="description">
+                {{ article.content | strip_html | truncate: 120 }}
+              </p>
+            {% endif %}
+
+            {% if article.published_at %}
+              <time
+                class="block mt-4 text-sm text-gray-500"
+                datetime="{{ article.published_at | date: '%Y-%m-%d' }}"
+                itemprop="datePublished">
+                {{ article.published_at | date: format: 'date_at_time' }}
+              </time>
+            {% endif %}
+
+            {% if article.author %}
+              <span
+                class="block mt-1 text-sm text-gray-500"
+                itemprop="author"
+                itemscope
+                itemtype="https://schema.org/Person">
+                By
+                <span itemprop="name">{{ article.author }}</span>
+              </span>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+
+    </div>
+    <!-- Pagination -->
+    <div class="mt-10 text-center">
+      <div class="mx-auto mt-5 pb-5">
+        {% render 'pagination'
+          , pagination: paginate %}
+      </div>
+    </div>
+  {% endpaginate %}
+</section>
+
+
+{% schema %}
+  {
+    "name": "Blog",
+
+    "settings": [
+      {
+        "type": "range",
+        "id": "number_of_blog_posts",
+        "step": 1,
+        "max": 6,
+        "min": 1,
+        "label": "Blog Per Page",
+        "default": 3
+      }
+    ]
+
+  }
+{% endschema %}
